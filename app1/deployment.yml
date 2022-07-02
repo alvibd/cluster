@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app1
+  labels:
+    app: app1
+
+spec:
+  # replicas: 3
+  strategy:
+    type: RollingUpdate
+
+  selector:
+    matchLabels:
+      app: app1
+
+  template:
+    metadata:
+      labels:
+        app: app1
+    spec:
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: node
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels:
+              app: app1
+      nodeSelector:
+        app: v1
+      tolerations:
+      - key: "app"
+        operator: "Exists"
+        effect: "NoSchedule"
+      containers:
+      - name: app
+        image: alviahmed/app1:v0.1
+        imagePullPolicy: IfNotPresent # IfNotPresent # Always
+
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "100Mi"
+          limits:
+            cpu: "100m"
+            memory: "500Mi"
+
+        ports:
+        - containerPort: 8080
+        # command: ["tail", "-f", "/dev/null"]
+        # command: ["/bin/bash"]
+        # args: ["-c", "cp -R /var/www/ /home/app && cd /home/app/ && php artisan server -p 8080"]
+        command:
+          - "php"
+          - "artisan"
+          - "serve"
+          - "--port=8080"
+          - "--host=0.0.0.0"
+
+        volumeMounts:
+        - mountPath: /var/www/.env
+          subPath: .env
+          name: app1
+        env:
+        - name: APP_DEPLOYMENT_COUNTER
+          value: "12"
+
+      volumes:
+      - name: app1
+        configMap:
+          name: app1
